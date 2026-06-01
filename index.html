@@ -479,29 +479,42 @@ function streetAdv(hd,draws,tex,street){
   if(!hd)return null;
   const{tier,name}=hd,hasFD=draws.some(d=>!d.bd&&d.text.includes('Flush')),hasOESD=draws.some(d=>d.text.includes('OESD')),hasGut=draws.some(d=>d.text.includes('Gutshot'));
   const isWet=tex.includes('Two-tone')||tex.includes('Monotone')||tex.includes('Connected');
-  const ok=(a,s,c)=>({act:a,size:s,cls:c});
+  const ok=(a,s,c,r)=>({act:a,size:s,cls:c,reason:r});
   if(street==='Flop'){
-    if(tier>=5)return ok('BET for value','60–75% pot','push');
-    if(tier===4)return ok('BET for value',(isWet?'65–75%':'50–65%')+' pot','push');
-    if(tier===3)return ok(name.includes('Overpair')?'BET (value + protect)':'BET for value',(isWet?'60%':'45–55%')+' pot','push');
-    if(tier===2){if(hasFD||hasOESD)return ok('SEMI-BLUFF or CHECK','33% pot if betting','mix');return ok('CHECK/CALL','pot control','mix');}
-    if(tier===1){if(hasOESD||hasFD)return ok('SEMI-BLUFF or CHECK/FOLD','33% if betting','mix');return ok('CHECK/FOLD','—','fold');}
-    if(hasOESD)return ok('SEMI-BLUFF','40–50% pot','mix');
-    if(hasFD)return ok('SEMI-BLUFF or CHECK','33–40% pot','mix');
-    return ok('CHECK/FOLD','—','fold');
+    if(tier>=5)return ok('BET for value','60–75% pot','push','Monster — build the pot now and charge any draws hard. Don\'t slow-play; opponents can hit on the turn.');
+    if(tier===4)return ok('BET for value',(isWet?'65–75%':'50–65%')+' pot','push',isWet?'Strong hand on a wet board — bet bigger to make draws pay. If they call, you still have the best hand most of the time.':'Strong hand, dry board — bet for value. Smaller sizing is fine since few draws exist.');
+    if(tier===3)return ok(name.includes('Overpair')?'BET (value + protect)':'BET for value',(isWet?'60%':'45–55%')+' pot','push',isWet?'Good hand but the board has flush/straight draw potential — a firm bet gets value and charges the draws at the same time.':'Solid hand on a safe board — bet for value and to narrow the field.');
+    if(tier===2){
+      if(hasFD||hasOESD)return ok('SEMI-BLUFF or CHECK','33% pot if betting','mix','Marginal hand but you also have a draw — a small bet picks up fold equity now and still gives you outs if called. Out of position, checking is safer.');
+      return ok('CHECK/CALL','pot control','mix','Weak pair or two pair — not strong enough to build a big pot. Check to keep the pot small; call one reasonable bet to see the turn.');
+    }
+    if(tier===1){
+      if(hasOESD||hasFD)return ok('SEMI-BLUFF or CHECK/FOLD','33% if betting','mix','Weak showdown value but a draw gives you outs — a small bet as a semi-bluff is okay. Fold to any significant raise.');
+      return ok('CHECK/FOLD','—','fold','Bottom pair or worse with no draw — your hand rarely wins at showdown. Check and fold to any bet.');
+    }
+    if(hasOESD)return ok('SEMI-BLUFF','40–50% pot','mix','Open-ended straight draw has ~17% to hit (8 outs). Bet to fold out pairs and pick up the pot now, with equity to fall back on if called.');
+    if(hasFD)return ok('SEMI-BLUFF or CHECK','33–40% pot','mix','Flush draw has ~19% to hit (9 outs). Small semi-bluff is fine; fold to a large re-raise. Don\'t over-commit without a made hand.');
+    return ok('CHECK/FOLD','—','fold','No made hand and no draw — check and fold. There\'s no reason to put money in.');
   }
   if(street==='Turn'){
-    if(tier>=5)return ok('BET big','65–80% pot','push');if(tier>=4)return ok('BET for value','55–70% pot','push');
-    if(tier===3)return ok(isWet?'BET (protect)':'BET or CHECK',(isWet?'55–65%':'45%')+' pot','push');
-    if(tier===2)return ok('POT CONTROL','check/call one bet','mix');if(tier===1)return ok('CHECK/FOLD','—','fold');
-    if(hasOESD||hasFD)return ok('SEMI-BLUFF or CHECK','50–65% if betting','mix');return ok('CHECK/FOLD','—','fold');
+    if(tier>=5)return ok('BET big','65–80% pot','push','Monster hand on the turn — the pot is already large, maximize value now. Opponents only have one card left to improve, so charge them heavily.');
+    if(tier>=4)return ok('BET for value','55–70% pot','push','Strong hand — turn bets should be larger than flop bets. Draws are only ~20% to hit with one card left, so make them pay the wrong price to chase.');
+    if(tier===3)return ok(isWet?'BET (protect)':'BET or CHECK',(isWet?'55–65%':'45%')+' pot','push',isWet?'Good hand but draws are still live — bet to charge them. They\'re only ~20% to hit on the river, so a bet of 55–65% pot makes it mathematically wrong for them to call.':'Decent hand on a dry board — bet for value or check-call. With few draws remaining, pot control is also reasonable here.');
+    if(tier===2)return ok('POT CONTROL','check/call one bet','mix','Marginal hand on the turn — the pot is already big enough. Avoid bloating it further. Check to keep the pot small, and call one bet if the sizing is reasonable.');
+    if(tier===1)return ok('CHECK/FOLD','—','fold','Weak pair on the turn — check and fold. The pot is too large to bluff-catch, and your hand rarely wins at showdown.');
+    if(hasOESD||hasFD)return ok('SEMI-BLUFF or CHECK','50–65% if betting','mix','Draw with one card left (~20% to hit) — a semi-bluff bet of 50–65% forces opponents to make a tough decision. If they call, you still have outs on the river.');
+    return ok('CHECK/FOLD','—','fold','No hand and no draw on the turn — give up. Don\'t throw money in without equity.');
   }
   if(street==='River'){
-    if(tier>=5)return ok('VALUE BET BIG','75–130% pot','push');if(tier===4)return ok('VALUE BET','55–75% pot','push');
-    if(tier===3)return ok('VALUE BET','35–55% pot','push');
-    if(tier===2)return ok(name.includes('Two Pair')||name.includes('Trips')?'SMALL VALUE BET':'CHECK / THIN BET',(name.includes('Two Pair')||name.includes('Trips'))?'25–35% pot':'25% if betting','push');
-    if(tier===1)return ok('CHECK/FOLD or BLOCKER BET','10–15% blocker or check','fold');
-    return ok(draws.length?'BLUFF or FOLD':'CHECK/FOLD',draws.length?'50–80% only if you block their value':'—','fold');
+    if(tier>=5)return ok('VALUE BET BIG','75–130% pot','push','Monster on the river — this is your last chance to get paid. Bet big: opponents can\'t improve anymore, they can only call or fold. Overbet the pot if the board is scary and you have the nuts.');
+    if(tier===4)return ok('VALUE BET','55–75% pot','push','Strong hand — size your bet to get called by worse hands. If the board paired on the river, be cautious of full houses and size down slightly.');
+    if(tier===3)return ok('VALUE BET','35–55% pot','push','Good hand — use a smaller value bet to invite calls from weaker pairs and bluff-catchers. Betting too big risks only being called by better hands.');
+    if(tier===2)return ok(
+      name.includes('Two Pair')||name.includes('Trips')?'SMALL VALUE BET':'CHECK or THIN BET',
+      name.includes('Two Pair')||name.includes('Trips')?'25–35% pot':'25% if betting','push',
+      name.includes('Two Pair')||name.includes('Trips')?'Marginal value — a small bet targets worse single pairs that will call but not raise. This is a thin value bet, not a bluff.':'Check is usually best here. A 25% pot thin value bet only works if you read your opponent as likely to call with worse.');
+    if(tier===1)return ok('CHECK/FOLD or BLOCKER BET','10–15% blocker or check','fold','Weak hand — check and fold to any bet. A tiny blocker bet (10–15% pot) can work if you hold a card that blocks the nuts, making it less likely they have a strong hand to raise with.');
+    return ok(draws.length?'BLUFF or FOLD':'CHECK/FOLD',draws.length?'50–80% pot — only if you block their value':'—','fold',draws.length?'Missed draw on the river — your only option is to bluff. Only do this if you hold a card that blocks their strongest hands (e.g., nut flush blocker). Otherwise fold.':'No hand, no draw, no blockers — check and fold. Bluffing here is burning money.');
   }
   return null;
 }
@@ -525,10 +538,10 @@ function renderDiagram(){
     html+=`<div class="${cls}" style="left:${x}px;top:${y}px" onclick="clickSeat('${p}')">${p}</div>`;
   });
 
-  // Dealer button near BTN seat
-  const bi=pl.indexOf('BTN');
-  if(bi>=0){
-    const ang=-Math.PI/2+(2*Math.PI*bi/n),inr=0.62;
+  // Dealer button — BTN seat, or SB in heads-up (SB = dealer in HU)
+  const bi=pl.indexOf('BTN'),sbI=pl.indexOf('SB'),dealerI=bi>=0?bi:sbI;
+  if(dealerI>=0){
+    const ang=-Math.PI/2+(2*Math.PI*dealerI/n),inr=0.62;
     const dx=cx+(rx*inr)*Math.cos(ang),dy=cy+(ry*inr)*Math.sin(ang);
     html+=`<div class="dealer-btn" style="left:${dx}px;top:${dy}px">D</div>`;
   }
@@ -670,7 +683,13 @@ function updateAll(){
   // Pre-flop action
   let act='',cls='',info='';
   if(game==='aof'&&aofType==='nlh'){
-    if(pos==='BB'){act='DEFEND';cls='ab-mix';info='BB: call vs ≤6BB with any pair, Ax, suited connectors. Tighten vs 10BB+.';}
+    if(pos==='BB'){act='DEFEND';cls='ab-mix';
+      const callRange=stack<=5?'Any pair, any Ax, K9+, Q9s+, J9s+, T8s+, suited connectors — very wide':
+        stack<=10?'22+, A2s+, A7o+, K9s+, KTo+, QTs+, QJo, JTs — standard':
+        stack<=15?'55+, A2s+, A9o+, KTs+, KJo+, QJs — tighten up':
+        '77+, ATs+, AQo+, KQs — tight, they have a real hand';
+      info=`BB vs push at ${stack}BB: ${callRange}.`;
+    }
     else{const d=getAoFData(pos,players);const th=(d&&d[ht])||0;
       if(th>=stack){act='PUSH ✓';cls='ab-push';info=`${ht} → PUSH from ${pos} (threshold ~${th}BB)`;}
       else if(th>=stack-2){act='MARGINAL';cls='ab-mix';info=`Borderline — threshold ~${th}BB, you have ${stack}BB`;}
@@ -707,7 +726,7 @@ function updateAll(){
     if(hd)html+=`<div class="hand-name">${hd.name}</div>`;
     if(tex)html+=`<div class="board-tex">Board: ${tex}</div>`;
     if(draws.length)html+='<div class="draws-row">'+draws.map(d=>`<span class="draw-pill${d.bd?' bd':''}">${d.text}</span>`).join('')+'</div>';
-    if(adv){const ac=adv.cls==='ab-push'?'push':adv.cls==='ab-fold'?'fold':'mix';html+=`<div class="advice-card ac-${ac}"><div class="advice-act aa-${ac}">${adv.act}</div>${adv.size&&adv.size!=='—'?`<div class="advice-size">Sizing: ${adv.size}</div>`:''}</div>`;}
+    if(adv){const ac=adv.cls==='ab-push'?'push':adv.cls==='ab-fold'?'fold':'mix';html+=`<div class="advice-card ac-${ac}"><div class="advice-act aa-${ac}">${adv.act}</div>${adv.size&&adv.size!=='—'?`<div class="advice-size">Sizing: ${adv.size}</div>`:''}<div class="advice-reason">${adv.reason||''}</div></div>`;}
     html+=`<div class="po-grid"><div class="po-cell"><div class="po-bet">¼ pot</div><div class="po-need">17%</div></div><div class="po-cell"><div class="po-bet">½ pot</div><div class="po-need">33%</div></div><div class="po-cell"><div class="po-bet">⅔ pot</div><div class="po-need">40%</div></div><div class="po-cell"><div class="po-bet">Pot bet</div><div class="po-need">50%</div></div></div>`;
     document.getElementById('streetContent').innerHTML=html;
   } else sBox.style.display='none';
