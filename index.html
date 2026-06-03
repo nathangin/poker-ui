@@ -343,7 +343,19 @@ const NLH={
   5:new Set(['AA','KK','QQ','JJ','TT','99','88','77','66','55','44','33','22','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A5s','A4s','KQs','KJs','KTs','QJs','QTs','JTs','T9s','98s','87s','76s','65s','AKo','AQo','AJo','KQo','KJo']),
   6:new Set(['AA','KK','QQ','JJ','TT','99','88','77','66','AKs','AQs','AJs','ATs','A9s','A5s','KQs','KJs','KTs','QJs','JTs','T9s','98s','87s','AKo','AQo','AJo','KQo'])
 };
-function getNLHRange(p,n){if(p==='BB')return null;const b=behind(p,n);if(b<=0)return null;return NLH[Math.min(b,6)]||NLH[6];}
+function getNLHRange(p,n){if(p==='BB')return NLH_BB;const b=behind(p,n);if(b<=0)return null;return NLH[Math.min(b,6)]||NLH[6];}
+
+// ─ BB DEFEND RANGES ───────────────────────────────────────────────────────
+// NLH: hands BB should defend (call or 3-bet) vs a standard open
+const NLH_BB=new Set(['AA','KK','QQ','JJ','TT','99','88','77','66','55','44','33','22','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','AKo','AQo','AJo','ATo','A9o','A8o','A7o','A6o','KQs','KJs','KTs','K9s','K8s','K7s','K6s','KQo','KJo','KTo','QJs','QTs','Q9s','Q8s','QJo','QTo','JTs','J9s','J8s','JTo','T9s','T8s','T7s','T9o','98s','97s','96s','87s','86s','76s','75s','65s','64s','54s','53s']);
+// AoF NLH: BB call range vs a push, keyed by pusher stack (BB)
+const BB_CALL={
+  5: new Set(['AA','KK','QQ','JJ','TT','99','88','77','66','55','44','33','22','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','AKo','AQo','AJo','ATo','A9o','A8o','A7o','A6o','A5o','A4o','A3o','A2o','KQs','KJs','KTs','K9s','K8s','K7s','K6s','K5s','K4s','K3s','K2s','KQo','KJo','KTo','K9o','K8o','QJs','QTs','Q9s','Q8s','Q7s','QJo','QTo','Q9o','JTs','J9s','J8s','J7s','JTo','J9o','T9s','T8s','T7s','T9o','98s','97s','96s','87s','86s','76s','65s','54s','43s','32s']),
+  10:new Set(['AA','KK','QQ','JJ','TT','99','88','77','66','55','44','33','22','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','AKo','AQo','AJo','ATo','A9o','A8o','A7o','KQs','KJs','KTs','K9s','K8s','KQo','KJo','KTo','K9o','QJs','QTs','Q9s','QJo','QTo','JTs','J9s','JTo','T9s','T8s','T9o','98s','97s','87s','76s','65s','54s']),
+  15:new Set(['AA','KK','QQ','JJ','TT','99','88','77','66','55','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','AKo','AQo','AJo','ATo','A9o','KQs','KJs','KTs','K9s','KQo','KJo','QJs','QTs','JTs','T9s','98s','87s','76s']),
+  25:new Set(['AA','KK','QQ','JJ','TT','99','88','77','AKs','AQs','AJs','ATs','A9s','A5s','A4s','A3s','A2s','AKo','AQo','AJo','KQs','KJs','QJs','JTs','T9s'])
+};
+function getBBCallRange(s){return s<=5?BB_CALL[5]:s<=10?BB_CALL[10]:s<=15?BB_CALL[15]:BB_CALL[25];}
 
 // ─ PLO AoF PUSH THRESHOLD ─────────────────────────────────────────────────
 // Returns the minimum ploScore (0–100) needed to push
@@ -643,7 +655,10 @@ function updateMatrix(){
   for(let i=0;i<13;i++)for(let j=0;j<13;j++){
     const cell=document.getElementById(`m${i}_${j}`);if(!cell)continue;
     const ht=matCell(i,j);let cls='mc-fold';
-    if(game==='aof'&&aofType==='nlh'){if(aofD){const th=aofD[ht]||0;if(th>=stack)cls='mc-push';else if(th>=stack-2)cls='mc-mix';}}
+    if(game==='aof'&&aofType==='nlh'){
+      if(pos==='BB'){if(getBBCallRange(stack).has(ht))cls='mc-push';}
+      else if(aofD){const th=aofD[ht]||0;if(th>=stack)cls='mc-push';else if(th>=stack-2)cls='mc-mix';}
+    }
     else if(game==='nlh'){if(nlhR&&nlhR.has(ht))cls='mc-push';}
     else{// PLO or PLO AoF — 2-card component strength map
       const gap=Math.abs(i-j),ip=i===j;
@@ -658,7 +673,9 @@ function updateMatrix(){
 function updateAll(){
   const b=behind(pos,players);
   document.getElementById('matrixLabel').textContent=
+    (game==='aof'&&aofType==='nlh'&&pos==='BB')?`NLH AoF — BB Call Range vs ${stack}BB Push`:
     (game==='aof'&&aofType==='nlh')?`NLH AoF Push Range — ${pos} @ ${stack}BB`:
+    (game==='nlh'&&pos==='BB')?`Hold'em — BB Defend Range`:
     game==='nlh'?`Opening Range — ${pos}`:
     (game==='aof'&&aofType==='plo')?`PLO AoF Push Guide — ${pos} @ ${stack}BB`:
     'PLO 2-Card Component Map';
